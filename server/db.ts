@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, posts, Post, InsertPost } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -87,6 +87,117 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Get all posts for a specific user, ordered by most recent first
+ */
+export async function getUserPosts(userId: number): Promise<Post[]> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get posts: database not available");
+    return [];
+  }
+
+  try {
+    return await db
+      .select()
+      .from(posts)
+      .where(eq(posts.userId, userId))
+      .orderBy(desc(posts.updatedAt));
+  } catch (error) {
+    console.error("[Database] Failed to get user posts:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get a single post by slug (for public viewing)
+ */
+export async function getPostBySlug(slug: string): Promise<Post | undefined> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get post: database not available");
+    return undefined;
+  }
+
+  try {
+    const result = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.slug, slug))
+      .limit(1);
+    return result.length > 0 ? result[0] : undefined;
+  } catch (error) {
+    console.error("[Database] Failed to get post by slug:", error);
+    throw error;
+  }
+}
+
+/**
+ * Create a new post
+ */
+export async function createPost(post: InsertPost): Promise<Post> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  try {
+    const result = await db.insert(posts).values(post);
+    const newPost = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.id, result[0].insertId))
+      .limit(1);
+    return newPost[0];
+  } catch (error) {
+    console.error("[Database] Failed to create post:", error);
+    throw error;
+  }
+}
+
+/**
+ * Update an existing post
+ */
+export async function updatePost(
+  postId: number,
+  updates: Partial<InsertPost>
+): Promise<Post> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  try {
+    await db.update(posts).set(updates).where(eq(posts.id, postId));
+    const result = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1);
+    return result[0];
+  } catch (error) {
+    console.error("[Database] Failed to update post:", error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a post by ID
+ */
+export async function deletePost(postId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  try {
+    await db.delete(posts).where(eq(posts.id, postId));
+  } catch (error) {
+    console.error("[Database] Failed to delete post:", error);
+    throw error;
+  }
 }
 
 // TODO: add feature queries here as your schema grows.
