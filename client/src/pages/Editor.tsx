@@ -32,6 +32,19 @@ export default function Editor() {
 
   const createMutation = trpc.posts.create.useMutation();
   const updateMutation = trpc.posts.update.useMutation();
+  const { data: allPosts } = trpc.posts.list.useQuery();
+  const utils = trpc.useUtils();
+
+  // Load existing post if editing
+  useEffect(() => {
+    if (postId && allPosts) {
+      const post = allPosts.find((p) => p.id === postId);
+      if (post) {
+        setTitle(post.title);
+        setContent(post.content);
+      }
+    }
+  }, [postId, allPosts]);
 
   // Update preview when content changes
   useEffect(() => {
@@ -64,11 +77,16 @@ export default function Editor() {
           title,
           content,
         });
+        // 更新列表缓存
+        await utils.posts.list.invalidate();
+        alert("文章已更新");
       } else {
         const newPost = await createMutation.mutateAsync({
           title,
           content,
         });
+        // 更新列表缓存
+        await utils.posts.list.invalidate();
         setShareLink(
           `${window.location.origin}/post/${newPost.slug}`
         );
