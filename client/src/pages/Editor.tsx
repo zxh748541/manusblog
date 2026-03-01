@@ -1,4 +1,3 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { useLocation, useRoute } from "wouter";
@@ -19,7 +18,6 @@ const md = new MarkdownIt({
 });
 
 export default function Editor() {
-  const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/editor/:id");
   const postId = params?.id ? parseInt(params.id) : null;
@@ -51,22 +49,6 @@ export default function Editor() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [title, content]);
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <p className="text-slate-600">请先登录</p>
-          <Button
-            onClick={() => setLocation("/")}
-            className="mt-4 bg-slate-900 text-white hover:bg-slate-800"
-          >
-            返回
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   const handlePublish = async () => {
     if (!title.trim()) {

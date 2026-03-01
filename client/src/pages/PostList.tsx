@@ -1,4 +1,3 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
@@ -6,36 +5,11 @@ import { Plus, Trash2, Edit2 } from "lucide-react";
 import { useState } from "react";
 
 export default function PostList() {
-  const { user, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
-  const { data: posts, isLoading, refetch } = trpc.posts.list.useQuery(
-    undefined,
-    { enabled: isAuthenticated }
-  );
+  const { data: posts, isLoading, refetch } = trpc.posts.list.useQuery();
   const deleteMutation = trpc.posts.delete.useMutation({
     onSuccess: () => refetch(),
   });
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-slate-900 mb-4">
-            ManusBlog
-          </h1>
-          <p className="text-slate-600 mb-6">
-            一个极简的个人博客发布工具
-          </p>
-          <Button
-            onClick={() => setLocation("/login")}
-            className="bg-slate-900 text-white hover:bg-slate-800"
-          >
-            登录开始写作
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -48,7 +22,7 @@ export default function PostList() {
                 ManusBlog
               </h1>
               <p className="text-slate-600 mt-2">
-                欢迎, {user?.name || "创作者"}
+                极简博客发布工具
               </p>
             </div>
             <Button
