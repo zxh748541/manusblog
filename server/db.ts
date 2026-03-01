@@ -201,3 +201,24 @@ export async function deletePost(postId: number): Promise<void> {
 }
 
 // TODO: add feature queries here as your schema grows.
+
+/**
+ * Get all posts, ordered by most recent first
+ */
+export async function getAllPosts(): Promise<Post[]> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get posts: database not available");
+    return [];
+  }
+
+  try {
+    return await db
+      .select()
+      .from(posts)
+      .orderBy(desc(posts.updatedAt));
+  } catch (error) {
+    console.error("[Database] Failed to get all posts:", error);
+    throw error;
+  }
+}

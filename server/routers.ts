@@ -9,6 +9,7 @@ import {
   createPost,
   updatePost,
   deletePost,
+  getAllPosts,
 } from "./db";
 import { nanoid } from "nanoid";
 
@@ -28,11 +29,9 @@ export const appRouter = router({
 
   posts: router({
     /**
-     * Get all posts for the current user
+     * Get all posts (public access - no login required)
      */
-    list: protectedProcedure.query(({ ctx }) =>
-      getUserPosts(ctx.user.id)
-    ),
+    list: publicProcedure.query(() => getAllPosts()),
 
     /**
      * Get a single post by slug (public access)
@@ -42,16 +41,17 @@ export const appRouter = router({
       .query(({ input }) => getPostBySlug(input.slug)),
 
     /**
-     * Create a new post
+     * Create a new post (public access - no login required)
+     * Uses a default user ID for anonymous posts
      */
-    create: protectedProcedure
+    create: publicProcedure
       .input(
         z.object({
           title: z.string().min(1, "Title is required"),
           content: z.string(),
         })
       )
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ input }) => {
         // Generate a unique slug from title + random suffix
         const slug = `${input.title
           .toLowerCase()
@@ -59,7 +59,7 @@ export const appRouter = router({
           .replace(/^-+|-+$/g, "")}-${nanoid(6)}`;
 
         return createPost({
-          userId: ctx.user.id,
+          userId: 1, // Default user ID for anonymous posts
           title: input.title,
           content: input.content,
           slug,
@@ -67,9 +67,9 @@ export const appRouter = router({
       }),
 
     /**
-     * Update an existing post
+     * Update an existing post (public access)
      */
-    update: protectedProcedure
+    update: publicProcedure
       .input(
         z.object({
           id: z.number(),
@@ -77,11 +77,7 @@ export const appRouter = router({
           content: z.string().optional(),
         })
       )
-      .mutation(async ({ ctx, input }) => {
-        // First fetch the post to verify ownership
-        const db = await import("./db").then(m => m.getDb?.());
-        if (!db) throw new Error("Database not available");
-
+      .mutation(async ({ input }) => {
         return updatePost(input.id, {
           title: input.title,
           content: input.content,
@@ -89,11 +85,11 @@ export const appRouter = router({
       }),
 
     /**
-     * Delete a post
+     * Delete a post (public access)
      */
-    delete: protectedProcedure
+    delete: publicProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ input }) => {
         await deletePost(input.id);
         return { success: true };
       }),
