@@ -30,12 +30,14 @@ export default function Editor() {
   const [isSaving, setIsSaving] = useState(false);
   const [shareLink, setShareLink] = useState("");
   const [copied, setCopied] = useState(false);
-  const [isPreviewMode, setIsPreviewMode] = useState(postId ? true : false); // 编辑时默认预览，新建时默认编辑
+  const [isPreviewMode, setIsPreviewMode] = useState(postId ? true : false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [selectedColor, setSelectedColor] = useState("#ef4444");
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [imageAlt, setImageAlt] = useState("");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [showFontSize, setShowFontSize] = useState(false);
   const [selectedFontSize, setSelectedFontSize] = useState("16");
   const [showFontFamily, setShowFontFamily] = useState(false);
@@ -45,6 +47,7 @@ export default function Editor() {
 
   const createMutation = trpc.posts.create.useMutation();
   const updateMutation = trpc.posts.update.useMutation();
+  const uploadImageMutation = trpc.posts.uploadImage.useMutation();
   const { data: allPosts } = trpc.posts.list.useQuery();
   const utils = trpc.useUtils();
 
@@ -90,7 +93,6 @@ export default function Editor() {
           title,
           content,
         });
-        // 更新列表缓存
         await utils.posts.list.invalidate();
         alert("文章已更新");
       } else {
@@ -98,7 +100,6 @@ export default function Editor() {
           title,
           content,
         });
-        // 更新列表缓存
         await utils.posts.list.invalidate();
         setShareLink(
           `${window.location.origin}/post/${newPost.slug}`
@@ -169,18 +170,58 @@ export default function Editor() {
     // 创建本地预览 URL
     const localUrl = URL.createObjectURL(file);
     setImageUrl(localUrl);
+    setUploadedFile(file);
   };
 
-  const insertImage = () => {
-    if (!imageUrl) {
+  const insertImage = async () => {
+    if (!uploadedFile) {
       alert("请选择图片");
       return;
     }
-    const imageMarkdown = `![${imageAlt || "图片"}](${imageUrl})`;
-    insertMarkdown(imageMarkdown);
-    setShowImageUpload(false);
-    setImageUrl("");
-    setImageAlt("");
+
+    setIsUploadingImage(true);
+    try {
+      // 将文件转换为 base64
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64String = event.target?.result as string;
+        const base64 = base64String.split(",")[1];
+        if (!base64) {
+          alert("图片转换失败");
+          setIsUploadingImage(false);
+          return;
+        }
+
+        try {
+          // 调用后端 API 上传图片
+          const result = await uploadImageMutation.mutateAsync({
+            base64,
+            filename: uploadedFile.name,
+          });
+
+          if (result.success) {
+            // 使用云端 URL 插入 Markdown
+            const imageMarkdown = `![${imageAlt || "图片"}](${result.url})`;
+            insertMarkdown(imageMarkdown);
+            setShowImageUpload(false);
+            setImageUrl("");
+            setImageAlt("");
+            setUploadedFile(null);
+            alert("图片上传成功！");
+          }
+        } catch (error) {
+          console.error("Upload error:", error);
+          alert("图片上传失败，请重试");
+        } finally {
+          setIsUploadingImage(false);
+        }
+      };
+      reader.readAsDataURL(uploadedFile);
+    } catch (error) {
+      console.error("Error:", error);
+      alert("处理图片失败");
+      setIsUploadingImage(false);
+    }
   };
 
   const colorPresets = [
@@ -474,10 +515,10 @@ export default function Editor() {
                 />
                 <Button
                   onClick={insertImage}
-                  disabled={!imageUrl}
+                  disabled={!imageUrl || isUploadingImage}
                   className="bg-slate-900 text-white hover:bg-slate-800 text-sm"
                 >
-                  插入
+                  {isUploadingImage ? "上传中..." : "插入"}
                 </Button>
               </div>
               {imageUrl && (
@@ -584,7 +625,6 @@ export default function Editor() {
             <div className="flex gap-2">
               <Button
                 onClick={() => {
-                  // Open share dialog
                   if (navigator.share) {
                     navigator.share({
                       title,

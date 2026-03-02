@@ -12,6 +12,7 @@ import {
   getAllPosts,
 } from "./db";
 import { nanoid } from "nanoid";
+import { storagePut } from "./storage";
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -92,6 +93,51 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await deletePost(input.id);
         return { success: true };
+      }),
+
+    /**
+     * Upload image to cloud storage (public access)
+     */
+    uploadImage: publicProcedure
+      .input(
+        z.object({
+          base64: z.string(),
+          filename: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        try {
+          // Convert base64 to buffer
+          const buffer = Buffer.from(input.base64, "base64");
+
+          // Determine MIME type from filename
+          const ext = input.filename.split(".").pop()?.toLowerCase() || "png";
+          const mimeTypes: Record<string, string> = {
+            jpg: "image/jpeg",
+            jpeg: "image/jpeg",
+            png: "image/png",
+            gif: "image/gif",
+            webp: "image/webp",
+          };
+          const mimeType = mimeTypes[ext] || "image/png";
+
+          // Generate unique filename
+          const timestamp = Date.now();
+          const randomId = nanoid(8);
+          const uniqueFilename = `images/${timestamp}-${randomId}.${ext}`;
+
+          // Upload to S3
+          const { url } = await storagePut(uniqueFilename, buffer, mimeType);
+
+          return {
+            success: true,
+            url,
+            filename: uniqueFilename,
+          };
+        } catch (error) {
+          console.error("Image upload failed:", error);
+          throw new Error("Failed to upload image");
+        }
       }),
   }),
 });
