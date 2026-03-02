@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { useLocation, useRoute } from "wouter";
-import { ArrowLeft, Share2, Copy, Check } from "lucide-react";
+import { ArrowLeft, Share2, Copy, Check, Eye, Edit3, Image, Palette } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
@@ -28,7 +28,14 @@ export default function Editor() {
   const [isSaving, setIsSaving] = useState(false);
   const [shareLink, setShareLink] = useState("");
   const [copied, setCopied] = useState(false);
+  const [isPreviewMode, setIsPreviewMode] = useState(postId ? true : false); // 编辑时默认预览，新建时默认编辑
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [selectedColor, setSelectedColor] = useState("#ef4444");
+  const [showImageUpload, setShowImageUpload] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageAlt, setImageAlt] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const createMutation = trpc.posts.create.useMutation();
   const updateMutation = trpc.posts.update.useMutation();
@@ -131,6 +138,46 @@ export default function Editor() {
     }, 0);
   };
 
+  const insertColor = () => {
+    const colorMarkdown = `<span style="color: ${selectedColor}">文字</span>`;
+    insertMarkdown(colorMarkdown);
+    setShowColorPicker(false);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 创建本地预览 URL
+    const localUrl = URL.createObjectURL(file);
+    setImageUrl(localUrl);
+  };
+
+  const insertImage = () => {
+    if (!imageUrl) {
+      alert("请选择图片");
+      return;
+    }
+    const imageMarkdown = `![${imageAlt || "图片"}](${imageUrl})`;
+    insertMarkdown(imageMarkdown);
+    setShowImageUpload(false);
+    setImageUrl("");
+    setImageAlt("");
+  };
+
+  const colorPresets = [
+    "#ef4444", // 红色
+    "#f97316", // 橙色
+    "#eab308", // 黄色
+    "#22c55e", // 绿色
+    "#06b6d4", // 青色
+    "#3b82f6", // 蓝色
+    "#8b5cf6", // 紫色
+    "#ec4899", // 粉色
+    "#000000", // 黑色
+    "#6b7280", // 灰色
+  ];
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
@@ -147,6 +194,31 @@ export default function Editor() {
 
             {/* Toolbar */}
             <div className="flex items-center gap-2 flex-wrap justify-center">
+              {/* 切换按钮 */}
+              <Button
+                variant={isPreviewMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => setIsPreviewMode(true)}
+                className="text-xs flex items-center gap-1"
+                title="切换到预览模式"
+              >
+                <Eye size={16} />
+                预览
+              </Button>
+              <Button
+                variant={!isPreviewMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => setIsPreviewMode(false)}
+                className="text-xs flex items-center gap-1"
+                title="切换到编辑模式"
+              >
+                <Edit3 size={16} />
+                编辑
+              </Button>
+
+              <div className="w-px h-6 bg-slate-200" />
+
+              {/* 格式化工具 */}
               <Button
                 variant="outline"
                 size="sm"
@@ -201,6 +273,30 @@ export default function Editor() {
               >
                 Code
               </Button>
+
+              <div className="w-px h-6 bg-slate-200" />
+
+              {/* 图片和颜色按钮 */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowImageUpload(!showImageUpload)}
+                className="text-xs flex items-center gap-1"
+                title="插入图片"
+              >
+                <Image size={16} />
+                图片
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowColorPicker(!showColorPicker)}
+                className="text-xs flex items-center gap-1"
+                title="字体颜色"
+              >
+                <Palette size={16} />
+                颜色
+              </Button>
             </div>
 
             <Button
@@ -211,6 +307,101 @@ export default function Editor() {
               {isSaving ? "发布中..." : "发布"}
             </Button>
           </div>
+
+          {/* 颜色选择器 */}
+          {showColorPicker && (
+            <div className="mt-4 p-4 bg-slate-50 rounded border border-slate-200">
+              <div className="flex items-center gap-2 mb-3">
+                <label className="text-sm font-medium text-slate-700">选择颜色：</label>
+                <div className="flex gap-2 flex-wrap">
+                  {colorPresets.map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setSelectedColor(color)}
+                      className={`w-8 h-8 rounded border-2 transition ${
+                        selectedColor === color
+                          ? "border-slate-900"
+                          : "border-slate-300"
+                      }`}
+                      style={{ backgroundColor: color }}
+                      title={color}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-slate-700">自定义：</label>
+                <input
+                  type="text"
+                  value={selectedColor}
+                  onChange={(e) => setSelectedColor(e.target.value)}
+                  placeholder="#ef4444"
+                  className="px-3 py-2 border border-slate-200 rounded text-sm"
+                />
+                <input
+                  type="color"
+                  value={selectedColor}
+                  onChange={(e) => setSelectedColor(e.target.value)}
+                  className="w-10 h-10 rounded cursor-pointer"
+                />
+                <Button
+                  onClick={insertColor}
+                  className="bg-slate-900 text-white hover:bg-slate-800 text-sm"
+                >
+                  插入
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* 图片上传 */}
+          {showImageUpload && (
+            <div className="mt-4 p-4 bg-slate-50 rounded border border-slate-200">
+              <div className="flex items-center gap-2 mb-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  variant="outline"
+                  className="text-sm"
+                >
+                  选择图片
+                </Button>
+                {imageUrl && <span className="text-sm text-slate-600">已选择图片</span>}
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-slate-700">图片描述：</label>
+                <input
+                  type="text"
+                  value={imageAlt}
+                  onChange={(e) => setImageAlt(e.target.value)}
+                  placeholder="图片的描述文字"
+                  className="flex-1 px-3 py-2 border border-slate-200 rounded text-sm"
+                />
+                <Button
+                  onClick={insertImage}
+                  disabled={!imageUrl}
+                  className="bg-slate-900 text-white hover:bg-slate-800 text-sm"
+                >
+                  插入
+                </Button>
+              </div>
+              {imageUrl && (
+                <div className="mt-3 p-2 bg-white rounded border border-slate-200">
+                  <img
+                    src={imageUrl}
+                    alt="预览"
+                    className="max-w-xs max-h-40 rounded"
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -230,25 +421,41 @@ export default function Editor() {
       {/* Editor & Preview */}
       <div className="flex-1 flex overflow-hidden">
         {/* Editor */}
-        <div className="flex-1 border-r border-slate-200 flex flex-col overflow-hidden">
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="用 Markdown 格式写作..."
-            className="flex-1 w-full p-6 text-base text-slate-900 placeholder-slate-400 outline-none resize-none font-mono"
-          />
-        </div>
-
-        {/* Preview */}
-        <div className="flex-1 overflow-auto bg-slate-50">
-          <div className="p-6 prose prose-sm">
-            <div
-              dangerouslySetInnerHTML={{ __html: preview }}
-              className="text-slate-900"
+        {!isPreviewMode && (
+          <div className="flex-1 border-r border-slate-200 flex flex-col overflow-hidden">
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="用 Markdown 格式写作..."
+              className="flex-1 w-full p-6 text-base text-slate-900 placeholder-slate-400 outline-none resize-none font-mono"
             />
           </div>
-        </div>
+        )}
+
+        {/* Preview */}
+        {isPreviewMode && (
+          <div className="flex-1 overflow-auto bg-slate-50">
+            <div className="p-6 prose prose-sm max-w-none">
+              <div
+                dangerouslySetInnerHTML={{ __html: preview }}
+                className="text-slate-900"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Split View */}
+        {!isPreviewMode && (
+          <div className="flex-1 overflow-auto bg-slate-50">
+            <div className="p-6 prose prose-sm max-w-none">
+              <div
+                dangerouslySetInnerHTML={{ __html: preview }}
+                className="text-slate-900"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Share Modal */}
