@@ -1,12 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { useLocation, useRoute } from "wouter";
-import { ArrowLeft, Share2, Copy, Check, Eye, Edit3, Image, Palette } from "lucide-react";
+import { ArrowLeft, Share2, Copy, Check, Eye, Edit3, Image, Palette, Type } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 
+// 启用 HTML 标签渲染
 const md = new MarkdownIt({
+  html: true, // 启用 HTML 标签支持
   highlight: (str, lang) => {
     if (lang && hljs.getLanguage(lang)) {
       try {
@@ -34,6 +36,10 @@ export default function Editor() {
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [imageAlt, setImageAlt] = useState("");
+  const [showFontSize, setShowFontSize] = useState(false);
+  const [selectedFontSize, setSelectedFontSize] = useState("16");
+  const [showFontFamily, setShowFontFamily] = useState(false);
+  const [selectedFontFamily, setSelectedFontFamily] = useState("sans-serif");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -144,6 +150,18 @@ export default function Editor() {
     setShowColorPicker(false);
   };
 
+  const insertFontSize = (size: string) => {
+    const fontSizeMarkdown = `<span style="font-size: ${size}px">文字</span>`;
+    insertMarkdown(fontSizeMarkdown);
+    setShowFontSize(false);
+  };
+
+  const insertFontFamily = (font: string) => {
+    const fontFamilyMarkdown = `<span style="font-family: ${font}">文字</span>`;
+    insertMarkdown(fontFamilyMarkdown);
+    setShowFontFamily(false);
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -176,6 +194,16 @@ export default function Editor() {
     "#ec4899", // 粉色
     "#000000", // 黑色
     "#6b7280", // 灰色
+  ];
+
+  const fontSizes = ["12", "14", "16", "18", "20", "24", "28", "32"];
+
+  const fontFamilies = [
+    { name: "默认", value: "sans-serif" },
+    { name: "宋体", value: "SimSun, serif" },
+    { name: "微软雅黑", value: "Microsoft YaHei, sans-serif" },
+    { name: "等宽字体", value: "monospace" },
+    { name: "Georgia", value: "Georgia, serif" },
   ];
 
   return (
@@ -276,16 +304,26 @@ export default function Editor() {
 
               <div className="w-px h-6 bg-slate-200" />
 
-              {/* 图片和颜色按钮 */}
+              {/* 字体大小、字体、颜色、图片按钮 */}
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowImageUpload(!showImageUpload)}
+                onClick={() => setShowFontSize(!showFontSize)}
                 className="text-xs flex items-center gap-1"
-                title="插入图片"
+                title="字体大小"
               >
-                <Image size={16} />
-                图片
+                <Type size={16} />
+                大小
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFontFamily(!showFontFamily)}
+                className="text-xs flex items-center gap-1"
+                title="字体"
+              >
+                <Type size={16} />
+                字体
               </Button>
               <Button
                 variant="outline"
@@ -296,6 +334,16 @@ export default function Editor() {
               >
                 <Palette size={16} />
                 颜色
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowImageUpload(!showImageUpload)}
+                className="text-xs flex items-center gap-1"
+                title="插入图片"
+              >
+                <Image size={16} />
+                图片
               </Button>
             </div>
 
@@ -308,10 +356,51 @@ export default function Editor() {
             </Button>
           </div>
 
+          {/* 字体大小选择器 */}
+          {showFontSize && (
+            <div className="mt-4 p-4 bg-slate-50 rounded border border-slate-200">
+              <div className="flex items-center gap-2 flex-wrap">
+                <label className="text-sm font-medium text-slate-700">选择字体大小：</label>
+                {fontSizes.map((size) => (
+                  <Button
+                    key={size}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => insertFontSize(size)}
+                    className="text-xs"
+                  >
+                    {size}px
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 字体选择器 */}
+          {showFontFamily && (
+            <div className="mt-4 p-4 bg-slate-50 rounded border border-slate-200">
+              <div className="flex items-center gap-2 flex-wrap">
+                <label className="text-sm font-medium text-slate-700">选择字体：</label>
+                {fontFamilies.map((font) => (
+                  <Button
+                    key={font.value}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => insertFontFamily(font.value)}
+                    className="text-xs"
+                    style={{ fontFamily: font.value }}
+                  >
+                    {font.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* 颜色选择器 */}
           {showColorPicker && (
             <div className="mt-4 p-4 bg-slate-50 rounded border border-slate-200">
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <label className="text-sm font-medium text-slate-700">选择颜色：</label>
                 <div className="flex gap-2 flex-wrap">
                   {colorPresets.map((color) => (
