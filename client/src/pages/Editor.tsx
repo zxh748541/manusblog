@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { useLocation, useRoute } from "wouter";
-import { ArrowLeft, Share2, Copy, Check, Eye, Edit3, Image, Palette, Type } from "lucide-react";
+import { ArrowLeft, Share2, Copy, Check, Eye, Edit3, Image, Palette, Type, Save } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
@@ -18,6 +18,9 @@ const md = new MarkdownIt({
     return "";
   },
 });
+
+const AUTOSAVE_KEY = "manusblog_autosave";
+const AUTOSAVE_INTERVAL = 5000; // 5 seconds
 
 export default function Editor() {
   const [, setLocation] = useLocation();
@@ -42,8 +45,10 @@ export default function Editor() {
   const [selectedFontSize, setSelectedFontSize] = useState("16");
   const [showFontFamily, setShowFontFamily] = useState(false);
   const [selectedFontFamily, setSelectedFontFamily] = useState("sans-serif");
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "unsaved">("unsaved");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const createMutation = trpc.posts.create.useMutation();
   const updateMutation = trpc.posts.update.useMutation();
@@ -59,6 +64,18 @@ export default function Editor() {
         setTitle(post.title);
         setContent(post.content);
       }
+    } else {
+      // Load autosave draft if creating new post
+      const savedDraft = localStorage.getItem(AUTOSAVE_KEY);
+      if (savedDraft) {
+        try {
+          const { title: savedTitle, content: savedContent } = JSON.parse(savedDraft);
+          setTitle(savedTitle || "");
+          setContent(savedContent || "");
+        } catch (e) {
+          console.error("Failed to load autosave draft:", e);
+        }
+      }
     }
   }, [postId, allPosts]);
 
@@ -66,6 +83,42 @@ export default function Editor() {
   useEffect(() => {
     setPreview(md.render(content));
   }, [content]);
+
+  // Auto-save functionality
+  useEffect(() => {
+    if (postId) return; // Don't autosave when editing existing posts
+
+    // Clear existing timer
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    // Set unsaved status
+    setAutoSaveStatus("unsaved");
+
+    // Set new timer
+    autoSaveTimerRef.current = setTimeout(() => {
+      if (title || content) {
+        try {
+          localStorage.setItem(
+            AUTOSAVE_KEY,
+            JSON.stringify({ title, content, timestamp: Date.now() })
+          );
+          setAutoSaveStatus("saved");
+          // Reset status after 2 seconds
+          setTimeout(() => setAutoSaveStatus("unsaved"), 2000);
+        } catch (e) {
+          console.error("Failed to autosave:", e);
+        }
+      }
+    }, AUTOSAVE_INTERVAL);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [title, content, postId]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -101,6 +154,8 @@ export default function Editor() {
           content,
         });
         await utils.posts.list.invalidate();
+        // Clear autosave after successful publish
+        localStorage.removeItem(AUTOSAVE_KEY);
         setShareLink(
           `${window.location.origin}/post/${newPost.slug}`
         );
@@ -388,13 +443,23 @@ export default function Editor() {
               </Button>
             </div>
 
-            <Button
-              onClick={handlePublish}
-              disabled={isSaving}
-              className="bg-slate-900 text-white hover:bg-slate-800"
-            >
-              {isSaving ? "发布中..." : "发布"}
-            </Button>
+            <div className="flex items-center gap-2">
+              {!postId && (
+                <div className="text-xs text-slate-600 flex items-center gap-1">
+                  <Save size={14} />
+                  {autoSaveStatus === "saved" && "已保存"}
+                  {autoSaveStatus === "saving" && "保存中..."}
+                  {autoSaveStatus === "unsaved" && "未保存"}
+                </div>
+              )}
+              <Button
+                onClick={handlePublish}
+                disabled={isSaving}
+                className="bg-slate-900 text-white hover:bg-slate-800"
+              >
+                {isSaving ? "发布中..." : "发布"}
+              </Button>
+            </div>
           </div>
 
           {/* 字体大小选择器 */}
@@ -566,11 +631,13 @@ export default function Editor() {
         {/* Preview */}
         {isPreviewMode && (
           <div className="flex-1 overflow-auto bg-slate-50">
-            <div className="p-6 prose prose-sm max-w-none">
-              <div
-                dangerouslySetInnerHTML={{ __html: preview }}
-                className="text-slate-900"
-              />
+            <div className="h-full flex items-start justify-center">
+              <div className="w-full max-w-2xl px-6 py-8 prose prose-sm max-w-none">
+                <div
+                  dangerouslySetInnerHTML={{ __html: preview }}
+                  className="text-slate-900"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -578,11 +645,13 @@ export default function Editor() {
         {/* Split View */}
         {!isPreviewMode && (
           <div className="flex-1 overflow-auto bg-slate-50">
-            <div className="p-6 prose prose-sm max-w-none">
-              <div
-                dangerouslySetInnerHTML={{ __html: preview }}
-                className="text-slate-900"
-              />
+            <div className="h-full flex items-start justify-center">
+              <div className="w-full max-w-2xl px-6 py-8 prose prose-sm max-w-none">
+                <div
+                  dangerouslySetInnerHTML={{ __html: preview }}
+                  className="text-slate-900"
+                />
+              </div>
             </div>
           </div>
         )}
