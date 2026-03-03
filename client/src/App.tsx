@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import PostList from "./pages/PostList";
@@ -10,8 +10,12 @@ import PostView from "./pages/PostView";
 import PreviewPlayground from "./pages/PreviewPlayground";
 
 function Router() {
+  const [location] = useLocation();
+  const normalizedLocation =
+    location.length > 1 ? location.replace(/\/+$/, "") || "/" : location;
+
   return (
-    <Switch>
+    <Switch location={normalizedLocation}>
       <Route path={"/"} component={PostList} />
       <Route path={"/editor"} component={Editor} />
       <Route path={"/editor/:id"} component={Editor} />
