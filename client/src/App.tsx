@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import PostList from "./pages/PostList";
 import Editor from "./pages/Editor";
 import PostView from "./pages/PostView";
+import PreviewPlayground from "./pages/PreviewPlayground";
 
 function Router() {
   return (
@@ -15,6 +16,10 @@ function Router() {
       <Route path={"/editor"} component={Editor} />
       <Route path={"/editor/:id"} component={Editor} />
       <Route path={"/post/:slug"} component={PostView} />
+      <Route path={"/preview"} component={PreviewPlayground} />
+      <Route path={"/preview/"} component={PreviewPlayground} />
+      <Route path={"/preview/:token"} component={PreviewPlayground} />
+      <Route path={"/preview/:token/"} component={PreviewPlayground} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
