@@ -14,6 +14,13 @@ function Router() {
   const normalizedLocation =
     location.length > 1 ? location.replace(/\/+$/, "") || "/" : location;
 
+  if (
+    normalizedLocation === "/preview" ||
+    normalizedLocation.startsWith("/preview/")
+  ) {
+    return <PreviewPlayground />;
+  }
+
   return (
     <Switch location={normalizedLocation}>
       <Route path={"/"} component={PostList} />
