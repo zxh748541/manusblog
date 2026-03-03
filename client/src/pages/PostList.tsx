@@ -75,10 +75,16 @@ export default function PostList() {
                 className="bg-slate-900 text-white hover:bg-slate-800 flex items-center gap-2"
               >
                 <Plus size={20} />
-                新文章
+                {currentUser ? "写新文章" : "登录后写文章"}
               </Button>
             </div>
           </div>
+
+          <p className="text-sm text-slate-500 mt-4">
+            {currentUser
+              ? "已登录：你可以使用每篇文章右下角的「编辑文章」按钮进行修改。"
+              : "当前为访客模式：可阅读文章；登录后可创建、编辑和删除文章。"}
+          </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -137,6 +143,13 @@ export default function PostList() {
 
                   {currentUser && (
                     <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setLocation(`/editor/${post.id}`)}
+                      >
+                        编辑文章
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
