@@ -18,6 +18,8 @@ function Router() {
       <Route path={"/post/:slug"} component={PostView} />
       <Route path={"/preview"} component={PreviewPlayground} />
       <Route path={"/preview/"} component={PreviewPlayground} />
+      <Route path={"/preview/:token"} component={PreviewPlayground} />
+      <Route path={"/preview/:token/"} component={PreviewPlayground} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

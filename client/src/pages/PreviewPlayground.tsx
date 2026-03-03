@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useRoute } from "wouter";
 
 type DemoPost = {
   id: number;
@@ -29,6 +29,10 @@ const demoPosts: DemoPost[] = [
 
 export default function PreviewPlayground() {
   const [, setLocation] = useLocation();
+  const [, paramsA] = useRoute("/preview/:token");
+  const [, paramsB] = useRoute("/preview/:token/");
+  const token = paramsA?.token || paramsB?.token || "default";
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [posts, setPosts] = useState<DemoPost[]>(demoPosts);
 
@@ -45,9 +49,11 @@ export default function PreviewPlayground() {
             <div>
               <h1 className="text-3xl font-bold text-slate-900">ManusBlog 交互预览</h1>
               <p className="text-slate-600 mt-2">此页专门用于让你直接操作查看改动效果</p>
+              <p className="text-xs text-slate-500 mt-2">预览标识: {token}</p>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => setLocation("/")}>返回真实首页</Button>
+              <Button variant="outline" onClick={() => setLocation(`/preview/${Date.now()}`)}>生成新的预览 URL</Button>
               <Button onClick={() => setIsLoggedIn(v => !v)}>{isLoggedIn ? "切换为访客" : "切换为已登录"}</Button>
             </div>
           </div>
