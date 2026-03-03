@@ -2,4 +2,5 @@ Check
 
 https://manusblog-9xrefiry.manus.space/
 
-for details
+Preview page:
+https://manusblog-9xrefiry.manus.space/preview

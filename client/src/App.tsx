@@ -17,6 +17,7 @@ function Router() {
       <Route path={"/editor/:id"} component={Editor} />
       <Route path={"/post/:slug"} component={PostView} />
       <Route path={"/preview"} component={PreviewPlayground} />
+      <Route path={"/preview/"} component={PreviewPlayground} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
