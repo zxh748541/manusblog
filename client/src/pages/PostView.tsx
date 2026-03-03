@@ -7,6 +7,7 @@ import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 
 const md = new MarkdownIt({
+  html: true,
   highlight: (str, lang) => {
     if (lang && hljs.getLanguage(lang)) {
       try {
@@ -17,14 +18,38 @@ const md = new MarkdownIt({
   },
 });
 
+// 演示文章数据
+const DEMO_POSTS = [
+  {
+    id: 101,
+    title: "演示文章：欢迎体验新版首页",
+    content: "你现在看到的是演示数据，可以直接体验阅读、编辑入口和删除交互。",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    slug: "demo-welcome",
+  },
+  {
+    id: 102,
+    title: "演示文章：登录后可编辑",
+    content: "点击\"切换为已登录\"，你会看到编辑和删除按钮立即出现。",
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    updatedAt: new Date(Date.now() - 86400000).toISOString(),
+    slug: "demo-auth-edit",
+  },
+];
+
 export default function PostView() {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/post/:slug");
   const slug = params?.slug || "";
 
+  // 检查是否是演示模式的文章
+  const isDemoPost = slug?.startsWith("demo-");
+  const demoPost = isDemoPost ? DEMO_POSTS.find((p) => p.slug === slug) : null;
+
   const { data: post, isLoading, error } = trpc.posts.getBySlug.useQuery(
     { slug },
-    { enabled: !!slug }
+    { enabled: !!slug && !isDemoPost }
   );
 
   const [copied, setCopied] = useState(false);
@@ -36,15 +61,20 @@ export default function PostView() {
   };
 
   const handleShare = () => {
-    if (navigator.share) {
+    if (navigator.share && displayPost) {
       navigator.share({
-        title: post?.title,
+        title: displayPost.title,
         url: window.location.href,
       });
     }
   };
 
-  if (isLoading) {
+  // 使用演示文章或真实文章
+  const displayPost = (demoPost || post) as any;
+  const isLoaded = isDemoPost || !isLoading;
+  const hasError = isDemoPost ? false : error;
+
+  if (!isLoaded) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <p className="text-slate-600">加载中...</p>
@@ -52,7 +82,7 @@ export default function PostView() {
     );
   }
 
-  if (error || !post) {
+  if (hasError || !displayPost) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center">
         <p className="text-slate-600 mb-4">文章未找到</p>
@@ -116,14 +146,14 @@ export default function PostView() {
       <article className="container max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <header className="mb-8">
           <h1 className="text-4xl font-bold text-slate-900 mb-4">
-            {post.title}
+            {displayPost.title}
           </h1>
           <p className="text-slate-500 text-sm">
-            发布于 {new Date(post.createdAt).toLocaleDateString("zh-CN")}
-            {post.updatedAt !== post.createdAt && (
+            发布于 {new Date(displayPost.createdAt).toLocaleDateString("zh-CN")}
+            {displayPost.updatedAt !== displayPost.createdAt && (
               <>
                 {" "}
-                · 更新于 {new Date(post.updatedAt).toLocaleDateString("zh-CN")}
+                · 更新于 {new Date(displayPost.updatedAt).toLocaleDateString("zh-CN")}
               </>
             )}
           </p>
@@ -131,7 +161,7 @@ export default function PostView() {
 
         <div
           className="prose prose-sm max-w-none"
-          dangerouslySetInnerHTML={{ __html: md.render(post.content) }}
+          dangerouslySetInnerHTML={{ __html: md.render(displayPost.content) }}
         />
       </article>
 
